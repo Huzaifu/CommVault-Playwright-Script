@@ -1,0 +1,23 @@
+{
+  "url": "https://10.150.158.228",
+  "username": "YOUR-ADM-ACCOUNT",
+  "domain": "ECECLOUD",
+  "dashboard_route": "/commandcenter/#/dashboard/hyperscalecommcell",
+  "ignore_tls": true,
+  "timeout_seconds": 45,
+  "ignore_categories": ["No Schedule"],
+  "ignore_servers": [],
+  "collect_jobs": false,
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.yourdomain.com",
+    "smtp_port": 25,
+    "starttls": false,
+    "smtp_user": "",
+    "from": "commvault-monitor@yourdomain.com",
+    "to": ["team@yourdomain.com"]
+  },
+  "ci": {
+    "tools_dir": "C:\\ci-tools\\commvault-sla"
+  }
+}

@@ -1,0 +1,43 @@
+# Commvault daily Missed-SLA check - Windows GitLab Runner (shell executor, PowerShell).
+# Every non-secret setting lives in config.json (URL, username, domain, ignore list, e-mail, tools folder).
+# Only secrets are GitLab CI/CD variables:  COMMVAULT_PASS   (+ SMTP_PASS if your SMTP needs a login)
+# Two things GitLab itself requires in this file: the runner tag below and the artifacts path (reports/).
+
+stages:
+  - monitor
+
+variables:
+  GIT_STRATEGY: fetch
+  PYTHONUTF8: "1"
+  PYTHONUNBUFFERED: "1"
+
+commvault-sla-check:
+  stage: monitor
+  tags:
+    - commvault            # <-- CHANGE to the tag of your Windows runner
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"        # "Run pipeline" button
+  timeout: 20 minutes
+  script:
+    # read the tools folder from config.json
+    - '$cfg = Get-Content config.json -Raw | ConvertFrom-Json'
+    - '$tools = $cfg.ci.tools_dir'
+    - '$venv = "$tools\venv"'
+    - '$env:PLAYWRIGHT_BROWSERS_PATH = "$tools\browsers"'
+    # persistent virtualenv + Chromium (created on the first run only)
+    - 'if (-not (Test-Path "$venv\Scripts\python.exe")) { py -3 -m venv $venv }'
+    - '& "$venv\Scripts\python.exe" -m pip install --quiet --disable-pip-version-check -r requirements.txt'
+    - '& "$venv\Scripts\python.exe" -m playwright install chromium'
+    # run the check: settings from config.json, password from GitLab variable COMMVAULT_PASS
+    - '& "$venv\Scripts\python.exe" commvault_sla_monitor.py --config config.json'
+  after_script:
+    - 'Get-ChildItem reports -Directory | Sort-Object Name | Select-Object -Last 1 | ForEach-Object { Get-Content "$($_.FullName)\summary.json" }'
+  # exit code 2 = missed SLAs need attention -> job turns orange (warning) instead of red
+  allow_failure:
+    exit_codes: 2
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - reports/
